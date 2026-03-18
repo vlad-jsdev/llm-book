@@ -24,7 +24,10 @@ class NeuralNetwork(torch.nn.Module):
 torch.manual_seed(123)
 model = NeuralNetwork(50, 3)
 X = torch.randn(1, 50)
-output = model(X)
-print(output)
+# output = model(X)
+# print(output)
+with torch.no_grad():
+	out = torch.softmax(model(X), dim=-1)
+print(out)
 # print(f"Number of trainable parameters: {num_params}")
 # print(model)
