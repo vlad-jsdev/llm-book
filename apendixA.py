@@ -1,4 +1,5 @@
 import torch
+from torch.utils.data import Dataset
 
 # class NeuralNetwork(torch.nn.Module):
 #     def __init__(self, num_inputs, num_outputs):
@@ -49,7 +50,22 @@ X_test = torch.tensor([
 y_test = torch.tensor([0, 1])
 
 
-from torch.utils.data import Dataset
 
 class ToyDataset(Dataset):
+
     def __init__(self, X, y):
+        self.features = X
+        self.labels = y
+
+    def __getitem__(self, index):
+        one_x = self.features[index]
+        one_y = self.labels[index]
+        return one_x, one_y
+
+    def __len__(self):
+        return self.labels.shape[0]
+
+train_ds = ToyDataset(X_train, y_train)
+test_ds = ToyDataset(X_test, y_test)
+
+print(len(train_ds))
