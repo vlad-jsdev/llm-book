@@ -1,5 +1,6 @@
 import torch
 from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
 
 # class NeuralNetwork(torch.nn.Module):
 #     def __init__(self, num_inputs, num_outputs):
@@ -69,3 +70,22 @@ train_ds = ToyDataset(X_train, y_train)
 test_ds = ToyDataset(X_test, y_test)
 
 print(len(train_ds))
+
+torch.manual_seed(123)
+
+train_loader = DataLoader(
+	dataset=train_ds,
+	batch_size=2,
+	shuffle=True,
+	num_workers=0
+)
+
+test_loader = DataLoader(
+	dataset=test_ds,
+	batch_size=2,
+	shuffle=False,
+	num_workers=0
+)
+
+for idx, (x, y) in enumerate(train_loader):
+	print(f"Batch {idx+1}:", x, y)
