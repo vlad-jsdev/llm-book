@@ -133,38 +133,50 @@ query_2 = x_2 @ W_query
 key_2 = x_2 @ W_key
 value_2 = x_2 @ W_value
 # print(query_2)
-class SelfAttention_v1(nn.Module):
-	def __init__(self, d_in, d_out, qkv_bias=False):
+class CausalAttention(nn.Module):
+	def __init__(self, d_in, d_out, context_length, dropout, qkv_bias=False):
 		super().__init__()
+		self.d_out = d_out
 		self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
 		self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
 		self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
+		self.dropout = nn.Dropout(dropout)
+		self.register_buffer(
+			"mask", 
+			torch.triu(torch.ones(context_length, context_length),
+			diagonal=1)
+		)
 	def forward(self, x):
+		b, num_tokens, d_in = x.shape
 		keys = self.W_key(x)
 		queries = self.W_query(x)
 		values = self.W_value(x)
-		attn_scores = queries @ keys.T # omega 
-		attn_weights = torch.softmax(attn_scores / keys.shape[-1]**0.5, dim=-1 )
-		context_length = attn_scores.shape[0]
-		# mask_simple = torch.tril(torch.ones(context_length, context_length)) 
-		# masked_simple = attn_weights * mask_simple
-		# row_sums = masked_simple.sum(dim=-1, keepdim=True)
-		# masked_simple_norm = masked_simple / row_sums
-		mask = torch.triu(torch.ones(context_length, context_length), diagonal=1) 
-		masked = attn_scores.masked_fill(mask.bool(), -torch.inf)
-		attn_weights = torch.softmax(masked / keys.shape[-1]**0.5, dim=1) 
-		torch.manual_seed(123)
-		dropout = torch.nn.Dropout(0.5)
-		example = torch.ones(6, 6)
-		torch.manual_seed(123)
-		print(dropout(attn_weights))
-		# print(attn_weights)
-		context_vec = attn_weights @ values 
+		attn_scores = queries @ keys.transpose(1, 2)
+		attn_scores.masked_fill_(self.mask.bool() [:num_tokens, :num_tokens], -torch.inf)
+		attn_weights = torch.softmax(attn_scores / keys.shape[-1]**0.5, dim=-1)
+		attn_weights = self.dropout(attn_weights)
+		context_vec = attn_weights @ values
 		return context_vec
 
+# print("context_vec.shape:", context_vec.shape)
+
+class MultuHeadAttention(nn.Module):
+	def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False):
+		super().__init__()
+		self.heads = nn.ModuleList(
+			[
+				CausalAttention(d_in, d_out, context_length, dropout, qkv_bias)
+				for _ in range(num_heads)
+			]
+		)
+	def forward(self, x):
+		return torch.cat([head(x) for head in self.heads], dim=-1)
+
+batch = torch.stack((inputs, inputs), dim=0) 
 torch.manual_seed(123)
-sa_v1 = SelfAttention_v1(d_in, d_out) 
-sa_v1(inputs)
-
-
-
+context_length = batch.shape[1]
+d_in, d_out = 3, 2 
+mha = MultuHeadAttention(d_in, d_out, context_length, dropout=0.0, num_heads=2)
+context_vecs = mha(batch)
+# print("context_vecs:", context_vecs)
+print("context_vecs.shape:", context_vecs.shape)
