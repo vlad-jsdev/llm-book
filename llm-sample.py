@@ -178,7 +178,7 @@ class MultuHeadAttention(nn.Module):
 		assert(d_out % num_heads == 0)
 		self.d_out = d_out
 		self.num_heads = num_heads
-		self.head_dim = d_out
+		self.head_dim = d_out // num_heads
 		self.W_query = nn.Linear(d_in, d_out, bias=qkv_bias)
 		self.W_key = nn.Linear(d_in, d_out, bias=qkv_bias)
 		self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
@@ -194,9 +194,9 @@ class MultuHeadAttention(nn.Module):
 		keys = self.W_key(x)
 		queries = self.W_query(x)
 		values = self.W_value(x)
-		keys = keys.view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
-		values = values.view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
-		queries = queries.view(b, num_tokens, self.num_heads, self.head_dim).transpose(1, 2)
+		keys = keys.view(b, num_tokens, self.num_heads, self.head_dim)
+		values = values.view(b, num_tokens, self.num_heads, self.head_dim)
+		queries = queries.view(b, num_tokens, self.num_heads, self.head_dim)
 		keys = keys.transpose(1, 2)
 		queries = queries.transpose(1, 2)
 		values = values.transpose(1, 2)
@@ -209,22 +209,22 @@ class MultuHeadAttention(nn.Module):
 		context_vec = context_vec.contiguous().view(b, num_tokens, self.d_out)
 		context_vec = self.out_proj(context_vec)
 		return context_vec
-a = torch.tensor([[[[0.2745, 0.6584, 0.2775, 0.8573],
-[0.8993, 0.0390, 0.9268, 0.7388], [0.7179, 0.7058, 0.9156, 0.4340]],
-[[0.0772, 0.3565, 0.1479, 0.5331], [0.4066, 0.2318, 0.4545, 0.9737], [0.4606, 0.5159, 0.4220, 0.5786]]]])
+# a = torch.tensor([[[[0.2745, 0.6584, 0.2775, 0.8573],
+# [0.8993, 0.0390, 0.9268, 0.7388], [0.7179, 0.7058, 0.9156, 0.4340]],
+# [[0.0772, 0.3565, 0.1479, 0.5331], [0.4066, 0.2318, 0.4545, 0.9737], [0.4606, 0.5159, 0.4220, 0.5786]]]])
 
 batch = torch.stack((inputs, inputs), dim=0) 
 torch.manual_seed(123)
 context_length = batch.shape[1]
-d_in, d_out = 3, 2 
-# mha = MultuHeadAttention(d_in, d_out, context_length, dropout=0.0, num_heads=2)
-# context_vecs = mha(batch)
-# print("context_vecs:", context_vecs)
-first_head = a[0, 0, :, :]
-first_res = first_head @ first_head.T 
-print("First head:\n", first_res)
-second_head = a[0, 1, :, :] 
-second_res = second_head @ second_head.T 
-print("\nSecond head:\n", second_res)
+d_in, d_out = 3, 8
+mha = MultuHeadAttention(d_in, d_out, context_length, dropout=0.0, num_heads=4)
+context_vecs = mha(batch)
+print("context_vecs:", context_vecs.shape)
+# first_head = a[0, 0, :, :]
+# first_res = first_head @ first_head.T 
+# print("First head:\n", first_res)
+# second_head = a[0, 1, :, :] 
+# second_res = second_head @ second_head.T 
+# print("\nSecond head:\n", second_res)
 # print("MHA:", mha)
 
